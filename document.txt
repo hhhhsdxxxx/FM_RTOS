@@ -1,0 +1,269 @@
+3/18/2016
+1.0 beta published
+cpu_m3.h
+struct stack_frame
+定义寄存器结构，用于上下文切换时候寄存器值的储存
+
+struct exception_register	exception_reg
+中断时候保护现场的结构定义，利用中断保存上下文切换时候需要保存的寄存器的值
+
+ALIGN_DOWN 字节对齐
+
+fm_address fm_stack_init(void*, fm_address, void*); defined in fm_cpu.c
+初始化线程的栈空间，包括入口地址，堆栈顶指针和出口地址
+
+uint32_t get_thread_stack_used_size(void);	defined in fm_cpu.c
+得到当前线程的使用的栈空间大小
+
+
+fm_thread.h fm_thread.c
+struct fm_rtos_thread_struct fm_tcb
+线程控制块的结构定义
+
+fm_tcb* fm_thread_t 线程控制块结构指针
+
+fm_tcb_ready_queue
+就绪队列定义
+
+fm_tcb_queue
+等待和睡眠队列
+
+fm_tcb_queue_manager
+系统定义，结合了三个线程队列和调度状态
+
+fm_thread_init(void);
+线程结构初始化
+
+fm_thread_system_start(void);
+进入调度器，开始线程调度
+
+fm_bool fm_thread_create(fm_thread_t*, void (*)(void), uint16_t, fm_thread_priority);
+线程创建，入参包括线程控制块结构结构指针，入口函数，栈大小（缺省值为0,1024bytes），优先级
+返回值 CREATE_THREAD_SUCCEED 成功 CREATE_THREAD_FAILED 失败
+
+void fm_thread_wake(fm_thread_t*);
+唤醒目标线程 线程控制块结构指针
+
+void fm_thread_suspend(fm_thread_t*);
+挂起目标线程 线程控制块结构指针
+void fm_thread_suspend_self(void);
+挂起当前线程
+
+void fm_thread_resume(fm_thread_t*);
+恢复目标线程，放回就绪队列
+
+void fm_thread_change_priority(fm_thread_t*, fm_thread_priority);
+改变目标线程的优先级，永久改变		线程控制块结构指针，新的优先级
+void fm_thread_change_priority_self(fm_thread_priority);
+改变当前线程的优先级
+
+
+内部函数
+fm_thread_schedule(void);
+调度函数，不推荐用户使用
+void fm_thread_from_ready_to_ready(fm_tcb *);
+移动改变优先级后就绪队列内线程控制块的位置
+static fm_tcb *_highest_priority_thread(void);
+返回当前就绪队列中最高优先级线程控制块指针
+static void _find_thread(fm_tcb*, fm_tcb**, fm_tcb**, fm_bool*);
+找寻线程控制块，并保存它的前一个线程的指针
+static void _push_ready(fm_tcb_ready_queue *, fm_tcb *, fm_thread_priority);
+将新的线程推入就绪队列
+static void _pop_ready(fm_tcb_ready_queue *, fm_tcb *, fm_tcb *, fm_thread_priority);
+将目标线程从就绪队列推出
+static void _push_wait(fm_tcb_queue *, fm_tcb *, fm_thread_priority);
+将新的线程推入等待（睡眠）队列
+static void _pop_wait(fm_tcb_queue *, fm_tcb *, fm_tcb *, fm_thread_priority);
+将目标线程从等待（睡眠）队列推出
+void enable_schedule(void);
+启用调度
+void disable_schedule(void);
+关闭调度
+static fm_tcb *fm_tcb_alloc(void);
+线程控制块的空间申请
+void system_thread(void);
+守护线程
+void exit_thread(void);
+线程的出口函数
+static fm_bool tcb_init(fm_tcb *, void (*)(void), fm_thread_priority, fm_stack_size);
+线程控制块初始化
+static void add_safe_thread(void);
+增添守护线程
+static void init_ready_queue(fm_tcb_ready_queue *);
+初始化就绪队列
+static void init_wait_queue(fm_tcb_queue *);
+初始化等待队列
+void fm_thread_from_ready_to_wait(fm_tcb *, fm_tcb_ready_queue *, fm_tcb_queue *);
+将目标线程控制块从就绪队列放到等待（睡眠）队列
+void fm_thread_from_wait_to_ready(fm_tcb *, fm_tcb_ready_queue *, fm_tcb_queue *);
+将目标线程控制块从等待（睡眠）队列放到就绪队列
+
+fm_sem.h fm_sem.c
+fm_tsb_queue 	储存被阻塞的线程的队列
+fm_scb			计数信号量的结构
+_fm_sem_t		计数信号量结构管理的结构
+_fm_sem_t*		fm_sem_t
+fm_scb_queue	全部计数信号量管理的链表结构
+void fm_sem_mutex_init(void);
+信号量结构（同步，互斥）初始化
+void fm_sem_create(fm_sem_t *, fm_sem_cnt, fm_sem_cnt);
+创建同步计数信号量，管理结构指针，初始化次数，最大次数
+void fm_sem_delete(fm_sem_t *target);
+同步计数信号量删除 管理结构指针
+void fm_sem_request(fm_sem_t *target);
+同步计数信号量申请 管理结构指针
+void fm_sem_release(fm_sem_t *target);
+同步计数信号量释放 管理结构指针
+void fm_sem_clear(void);
+同步计数信号量清空 清空全部同步计数信号量
+
+fm_mutex 		互斥信号量的结构
+_fm_mutex_t		互斥信号量的结构管理指针
+_fm_mutex_t*	fm_mutex_t
+fm_mutex_queue	系统管理的全部互斥信号量的链表结构
+void fm_mutex_create(fm_mutex_t *);
+互斥信号量的创建 管理结构指针
+void fm_mutex_delete(fm_mutex_t *);
+互斥信号量的删除 管理结构指针
+void fm_mutex_lock(fm_mutex_t *);
+互斥信号量加锁   管理结构指针
+void fm_mutex_unlock(fm_mutex_t *);
+互斥信号量解锁	管理结构指针
+void fm_mutex_clear(void);
+互斥信号量清空	清空全部互斥信号量
+
+内部函数
+static void _find_highest_priority(fm_tcb **, fm_tsb_queue *);
+信号量的等待队列中优先级最高的线程结构指针
+static void _remove(fm_tcb **, fm_tsb_queue *);
+从信号量的等待队列中删除目标线程结构指针
+void check_and_change_priority(fm_tcb *);
+互斥信号量的优先级翻转实现
+
+fm_thread_sys.S
+其中上下文切换和PendSV的处理参考rt-thread的处理方式
+_fm_thread_context_switch_(from, to)
+上下文切换
+_fm_thread_start_
+线程系统启动，配置PendSV
+PendSV_Handler
+PendSV的中断处理函数，退出使用psp
+
+3/19/2016
+fm_tcb 		加入checksum 防止用户自己创建的非法数据干扰
+			加入了prev_thread，优化了fm_tcb在不同队列移动的效率
+加入fm_thread_from_wait_to_wait, 重构代码
+
+fm_timer.h fm_timer.c 计时器的管理
+void fm_timer_init();
+fm_bool fm_timer_request(fm_tcb *, fm_time_tick);
+void irp_timer_handler(void);
+
+fm_thread.c fm_thread.h 增加了fm_thread_sleep(uint32_t)函数
+
+3/23/2016
+修复了交换任务块时候会出错的问题，加入了屏蔽中断的控制。
+加入了裁剪的功能，方便用户的裁剪。
+fm_config.h 用于用户定制自己所需要的模块。
+fm_sem.c	修复了信号量操作会被中断干扰的问题
+
+3/24/2016
+重构了代码。
+fm_sem.c 	将一些操作替换成函数
+fm_mem.c	系统结构的分配统一到一个函数中，利用枚举，实现该函数可扩展性。
+接下来的计划：
+实现自己的malloc和free函数，以及一些字符串操作的代码。 
+
+3/25/2016
+fm_thread.c 完善了sleep函数，fm_tcb 结构中加入关于时间的结构变量 ticks， time_next_thread time_prev_thread
+			加入了中断服务程序，有关于sleep的定时任务
+fm_timer.c  完善了定时器的接口函数，使得用户对动态创建的定时器不可见，用统一的接口返回同样的对象
+
+3/26/2016
+fm_sem.c 	加入	fm_sem_init, 			fm_mutex_init,
+				fm_sem_iner_request, 	fm_sem_iner_release,
+				fm_mutex_iner_lock,		fm_mutex_iner_unlock 
+			使得代码结构更易读
+fm_mem.c 	加入了fm_memheap_init fm_malloc fm_free 实现了对动态内存的管理函数
+
+3/27/2016
+fm_mem.c	加入了	fm_calloc, fm_realloc 函数
+			void *fm_calloc(fm_mem_size_t count, fm_mem_size_t size)
+			void *fm_realloc(void *rmem, fm_mem_size_t new_size)
+fm_service.h fm_service.c
+			加入了一些在标准C中常用的函数，有些经过了自己的改编
+			memory:
+			void *fm_memset(void*, char, fm_mem_size_t) 
+			void *fm_memcpy(void*, void*, fm_mem_size_t) 
+			int fm_memcmp(const void*， const void*, fm_mem_size_t)
+			void *fm_memset_s(void*, fm_mem_size_t, char, fm_mem_size_t)
+			void *fm_memcpy_s(void*, fm_mem_size_t, void*, fm_mem_size_t)
+			string:
+			fm_string_size fm_strlen(const char *)
+			int fm_strcmp(const char *, const char*)
+			int fm_strncmp(const char*, const char *, fm_string_size)
+			int fm_strcasecmp(const char *, const char *, fm_string_size)
+			char *fm_strcpy(char *, const char *)
+			char *fm_strncpy(char *, const char *, fm_string_size) n包括'\0'
+			char *fm_strcat(char *, const char*)
+			char *fm_strncat(char *, const char*, fm_string_size) n包括'\0'
+			char *fm_strstr(const char *, const char*)
+28/3/2016	
+fm_service.h fm_service.c 加入了kmp算法
+			char *fm_kmp_init(const char*, int, int *)
+			char *fm_strstr_kmp_struct(const char *, int, const char *, int, int *)
+			char *fm_strstrkmp(const char *, const char*)
+29/3/2016
+fm_service.h fm_service.c
+			_STDIO_SERVICE_中加入两个格式化输入代码 
+			int fm_vsnprintf(char *buf, fm_mem_size_t size, const char *fmt, va_list args);
+			int fm_snprintf(char *buf, fm_mem_size_t size, const char *fmt, ...); 
+30/3/2016
+fm_thread.h fm_thread.c
+			改变fm_tcb_queue的结构，节省了至少248的全局空间和两个函数的代码空间
+			
+31/3/2016
+fm_thread.h fm_thread.c
+			解决了stack_top可能超过申请的空间范围的问题
+fm_timer.h
+			完善了timer库
+fm_mail.h fm_mail.c
+			新增加邮箱功能
+			int fm_send_mail(fm_thread_t *target, const void *msg, fm_mail_size size);
+			fm_mail_handler fm_receive_mail(void);
+			fm_mail_handler fm_receive_mail_from_thread(fm_thread_t *target);
+			int fm_has_mail(void);
+			void fm_delete_mail(fm_mail_handler mail);
+			void fm_clear_mailbox(void);
+4/10/2016	fm_timer.c
+			使用了回调函数，使得定/计时器使用变得更灵活
+4/25/2016	fm_uart.h fm_uart.c
+			基本的uart串口库，通过轮循的方式发送数据，中断的方式接收数据
+			拥有DMA发送功能，但仍未调试正确。
+4/30/2016   fm_assert.c fm_assert.h
+			fm_log.h fm_log.c
+			在串口通信的基础上增加了用于调试的库 fm_assert 和 fm_log
+			void fm_assert(int, const char*);
+			void fm_print(const char*);
+			int fm_printf(const char*, ...);
+			void fm_print_log(const char*);
+9/5/2016	通过service库的基本测试
+			修复了重构代码过程中延时等待队列和阻塞队列的共用一个接口引发的问题。 
+10/5/2016	fm_sem.c
+			发现并修复fm_mutex_unlock中解锁失败没有打开中断的错误。
+			fm_thread.c
+			发现并修复fm_thread_change_priority函数中对于RUN状态的任务修改优先级错误的BUG
+			fm_mail.h fm_mail.c
+			修复了mail中之前未完成的部分，使得mail基本功能完整
+			fm_timer.h fm_timer.c
+			修复了timer库中部分小问题，包括动态生成的定时器启用后状态位未置位等
+			增加了重新申请ticks数的功能。	fm_timer_set_newticks(fm_timer_handler, fm_time_tick)
+11/5/2016	fm_thread.c 
+			修复_push_ready函数中的导致任务切换出BUG的错误
+			新增了头尾不想接的就绪队列的模型
+			fm_uart_test.h fm_uart_test.c fm_uart.h fm_uart.c
+			增加了uart测试文件，修复了fm_uart.c中部分函数的错误。
+20/5/2016	fm_thread.h fm_thread.c
+			优化了就绪队列和等待队列中使用双向链表，不需要tail变量，节省了空间和时间。
+23/5/2016	fm_sem.c fm_sem.h
+			修复了优先级继承中，继承过一次后，第二次继承的错误							
